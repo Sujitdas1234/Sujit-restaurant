@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Restaurant App</title>
+<style>
+body{font-family:Arial;margin:0;padding:0;color:#fff;
+background-image:url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1650&q=80');
+background-size:cover;background-attachment:fixed;background-position:center;text-align:center;}
+h2,h3{text-shadow:2px 2px #000;margin:0;}
+.container{padding:50px;}
+.hidden{display:none;}
+form{background-color:rgba(0,0,0,0.7);display:inline-block;padding:20px;border-radius:10px;margin-top:20px;}
+input{margin:5px 0;padding:8px;border-radius:5px;border:none;}
+input[type=submit], button{background-color:#ff6600;color:#fff;font-weight:bold;cursor:pointer;border:none;border-radius:5px;padding:10px 20px;margin-top:10px;transition:transform 0.2s;}
+input[type=submit]:hover, button:hover{transform:scale(1.1);}
+.password-container{position:relative; display:inline-block;}
+.password-container span{position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#ff6600;}
+.flash{color:yellow;font-weight:bold;margin:10px;}
+.menu-container{display:flex;flex-wrap:wrap;justify-content:center;gap:20px;padding:20px;}
+.menu-card{background-color:rgba(0,0,0,0.75);border-radius:15px;padding:15px;width:200px;text-align:center;transition:transform 0.3s, box-shadow 0.3s;position:relative;}
+.menu-card:hover{transform:scale(1.05);box-shadow:0 8px 20px rgba(0,0,0,0.7);}
+.menu-card img{width:150px;height:150px;border-radius:10px;object-fit:cover;transition:transform 0.3s;}
+.menu-card:hover img{transform:scale(1.05);}
+.price-badge{position:absolute;top:10px;right:10px;background-color:#ff6600;color:#fff;padding:5px 10px;border-radius:50%;font-weight:bold;}
+#bill table{margin:auto;background-color:rgba(0,0,0,0.6);color:#fff;border-collapse: collapse;width:80%;}
+#bill th,#bill td{padding:10px 15px;border:1px solid #fff;}
+.header{position:fixed;top:0;left:0;width:100%;background-color:rgba(0,0,0,0.7);padding:15px;display:flex;justify-content:space-between;align-items:center;z-index:100;}
+.header button{margin-left:10px;}
+@media(max-width:768px){.menu-card{width:45%;}}
+@media(max-width:480px){.menu-card{width:90%;padding:10px;}}
+</style>
+</head>
+<body>
+
+<div id="flash" class="flash"></div>
+
+<!-- LOGIN SECTION -->
+<div id="login-section" class="container">
+<h2>Login</h2>
+<form id="login-form">
+<input type="text" id="username" placeholder="Username" required><br>
+<div class="password-container">
+<input type="password" id="password" placeholder="Password" required>
+<span onclick="togglePassword('password')">👁️</span>
+</div><br>
+<input type="submit" value="Login">
+</form>
+</div>
+
+<!-- MENU SECTION -->
+<div id="menu-section" class="hidden">
+<div class="header">
+<span id="user-display"></span>
+<div>
+<button onclick="showChange()">Change Username/Password</button>
+<button onclick="logout()">Logout</button>
+<button onclick="resetAll()">Reset All</button>
+</div>
+</div>
+
+<div class="menu-container" id="menu-container"></div>
+
+<div id="bill">
+<h2>Your Bill</h2>
+<table>
+<tr><th>S.N.</th><th>Item</th><th>Price</th><th>Quantity</th><th>Amount</th></tr>
+<tbody id="bill-body"></tbody>
+</table>
+<h3>Total: <span id="total">0</span> BDT</h3>
+</div>
+<button onclick="printBill()">Print Bill</button>
+</div>
+
+<!-- CHANGE CREDENTIALS SECTION -->
+<div id="change-section" class="hidden container">
+<h2>Change Username / Password</h2>
+<form id="change-form">
+<div class="password-container">
+<input type="password" id="current-password" placeholder="Current Password" required>
+<span onclick="togglePassword('current-password')">👁️</span>
+</div><br>
+<input type="text" id="new-username" placeholder="New Username" required><br>
+<div class="password-container">
+<input type="password" id="new-password" placeholder="New Password" required>
+<span onclick="togglePassword('new-password')">👁️</span>
+</div><br>
+<input type="submit" value="Update">
+</form>
+<button onclick="showMenu()">Back to Menu</button>
+</div>
+
+<script>
+const users = { admin: "password123" };
+let currentUser = null;
+
+const menuItems = {
+"Burger": {"price":80,"img":"https://assets.tmecosys.com/image/upload/t_web_rdp_recipe_584x480_1_5x/img/recipe/ras/Assets/102cf51c-9220-4278-8b63-2b9611ad275e/Derivates/3831dbe2-352e-4409-a2e2-fc87d11cab0a.jpg"},
+"Pizza":{"price":170,"img":"https://media.istockphoto.com/id/1442417585/photo/person-getting-a-piece-of-cheesy-pepperoni-pizza.jpg?s=612x612&w=0&k=20&c=k60TjxKIOIxJpd4F4yLMVjsniB4W1BpEV4Mi_nb4uJU="},
+"Pasta":{"price":300,"img":"https://s.lightorangebean.com/media/20240914160809/Spicy-Penne-Pasta_-done.png.webp"},
+"Sandwich":{"price":150,"img":"https://ichef.bbci.co.uk/food/ic/food_16x9_1600/recipes/club_sandwich_16496_16x9.jpg"},
+"Salad":{"price":120,"img":"https://cdn.loveandlemons.com/wp-content/uploads/2021/04/green-salad-1-740x1024.jpg"},
+"Soda":{"price":60,"img":"https://media.istockphoto.com/id/1393991937/photo/cola-with-crushed-ice-in-glass-and-there-is-water-droplets-around-cool-black-fresh-drink.jpg?s=612x612&w=0&k=20&c=jkqf-Bg6ImHfU6f8za6gHnwdiDUuvvdnX88eROolKz8="},
+"Coffee":{"price":100,"img":"https://www.allrecipes.com/thmb/DVzQ0d-nIU-ipbivy9Nmp20Rsqs=/750x0/filters:no_upscale():max_bytes(150000):strip_icc/:format(webp)/96629-cafe-latte-ddmfs-hero-4x3-0288359d9c37485fa69afe5369dbcf2e.jpg"},
+"IceCream":{"price":140,"img":"https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Strawberry_ice_cream_cone_%285076899310%29.jpg/500px-Strawberry_ice_cream_cone_%285076899310%29.jpg"}
+};
+
+function togglePassword(id){
+  const f=document.getElementById(id); f.type=f.type==='password'?'text':'password';
+}
+
+function showFlash(msg){document.getElementById('flash').innerText=msg;setTimeout(()=>{document.getElementById('flash').innerText='';},3000);}
+
+// LOGIN
+document.getElementById('login-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    const u=document.getElementById('username').value;
+    const p=document.getElementById('password').value;
+    if(users[u] && users[u]===p){
+        currentUser=u;
+        showMenu();
+    } else showFlash("Invalid username or password!");
+});
+
+// MENU
+function showMenu(){
+    document.getElementById('login-section').classList.add('hidden');
+    document.getElementById('change-section').classList.add('hidden');
+    document.getElementById('menu-section').classList.remove('hidden');
+    document.getElementById('user-display').innerText=currentUser;
+    renderMenu();
+    calculateTotal();
+}
+
+function renderMenu(){
+    const container=document.getElementById('menu-container');
+    container.innerHTML='';
+    for(const item in menuItems){
+        const div=document.createElement('div');
+        div.className='menu-card';
+        div.innerHTML=`<div class="price-badge">${menuItems[item].price} BDT</div>
+        <img src="${menuItems[item].img}" alt="${item}">
+        <h3>${item}</h3>
+        <input type="number" name="${item}" min="0" value="0" oninput="calculateTotal()">`;
+        container.appendChild(div);
+    }
+}
+
+function calculateTotal(){
+    let total=0; const tbody=document.getElementById('bill-body'); tbody.innerHTML=''; let sn=1;
+    for(const item in menuItems){
+        const qty=parseInt(document.getElementsByName(item)[0].value)||0;
+        if(qty>0){
+            const amt=qty*menuItems[item].price; total+=amt;
+            const tr=document.createElement('tr');
+            tr.innerHTML=`<td>${sn}</td><td>${item}</td><td>${menuItems[item].price}</td><td>${qty}</td><td>${amt}</td>`;
+            tbody.appendChild(tr); sn++;
+        }
+    }
+    document.getElementById('total').innerText=total;
+}
+
+function resetAll(){
+    const inputs=document.querySelectorAll('input[type=number]');
+    inputs.forEach(i=>i.value=0);
+    calculateTotal();
+}
+
+function printBill(){
+    let printContents=document.getElementById('bill').innerHTML;
+    let original=document.body.innerHTML;
+    document.body.innerHTML=printContents;
+    window.print();
+    document.body.innerHTML=original;
+    showMenu();
+}
+
+function logout(){currentUser=null;document.getElementById('menu-section').classList.add('hidden');document.getElementById('login-section').classList.remove('hidden');}
+
+// CHANGE CREDENTIALS
+function showChange(){
+    document.getElementById('menu-section').classList.add('hidden');
+    document.getElementById('change-section').classList.remove('hidden');
+}
+
+document.getElementById('change-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    const current=document.getElementById('current-password').value;
+    const newU=document.getElementById('new-username').value;
+    const newP=document.getElementById('new-password').value;
+    if(users[currentUser]!==current){showFlash("Current password is incorrect!"); return;}
+    if(users[newU]){showFlash("Username already exists!"); return;}
+    delete users[currentUser];
+    users[newU]=newP;
+    currentUser=newU;
+    showFlash("Username and password updated successfully!");
+    showMenu();
+});
+</script>
+
+</body>
+</html>
